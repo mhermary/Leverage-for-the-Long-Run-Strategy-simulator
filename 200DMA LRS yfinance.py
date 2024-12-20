@@ -11,6 +11,8 @@ cash_only = 1
 mrkt = '^GSPC'# index to follow - ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
 levETF = 'UPRO' # leveraged ETF to rotate into when the underlying index trades above the moving average
 hedge = 'SPDN' # Hedge to be rotated into when indx is under moving average. Only rotates in if cash_only is false - < 3mo tbill BIL, SHV, VGSH; Gold GLD, IAU; market short: SPDN, PSQ
+# Does not work well with ETFs that regularly pay dividends like BIL, SHV, VGSH, CASH.TO
+# Something in the yfinance data import does not lower the stock price after dividends are paid out
 indx = yf.Ticker(mrkt) 
 letf = yf.Ticker(levETF)
 tbill = yf.Ticker(hedge)
