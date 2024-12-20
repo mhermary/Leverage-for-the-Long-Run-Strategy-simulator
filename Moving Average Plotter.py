@@ -5,7 +5,6 @@ import datetime
 import matplotlib.dates as mdates
 
 moving_avg = 100
-cash_only = 0
 
 ticker1 = 'CASH.TO' # ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
 ticker2 = 'CASH.TO' 
