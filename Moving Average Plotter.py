@@ -1,13 +1,13 @@
 import matplotlib.pyplot as plt
 import yfinance as yf
-import pandas_datareader.data as web
-import datetime
+# import pandas_datareader.data as web
+# import datetime
 import matplotlib.dates as mdates
 
 moving_avg = 100
 
-ticker1 = 'CASH.TO' # ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
-ticker2 = 'CASH.TO' 
+ticker1 = '^GSPC' # ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
+ticker2 = '^NDX' 
 # Does not work well with ETFs that regularly pay dividends like BIL, SHV, VGSH, CASH.TO
 # Something in the yfinance data import does not lower the stock price after dividends are paid out
 period = '5y'
