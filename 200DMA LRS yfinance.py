@@ -4,43 +4,51 @@ import numpy as np
 import math
 import yfinance as yf
 import matplotlib.dates as mdates
+from datetime import datetime, timedelta
 
-moving_avg = 100
-cash_only = 1
+moving_avg = 200
+cash_only = True
+yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
 
-mrkt = '^GSPC'# index to follow - ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
-levETF = 'UPRO' # leveraged ETF to rotate into when the underlying index trades above the moving average
-hedge = 'SPDN' # Hedge to be rotated into when indx is under moving average. Only rotates in if cash_only is false - < 3mo tbill BIL, SHV, VGSH; Gold GLD, IAU; market short: SPDN, PSQ
+mrkt = '^NDX'# index to follow - ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
+levETF = 'TQQQ' # leveraged ETF to rotate into when the underlying index trades above the moving average
+hedge = 'BIL' # Hedge to be rotated into when indx is under moving average. Only rotates in if cash_only is false - < 3mo tbill BIL, SHV, VGSH; Gold GLD, IAU; market short: SPDN, PSQ
 # Does not work well with ETFs that regularly pay dividends like BIL, SHV, VGSH, CASH.TO
 # Something in the yfinance data import does not lower the stock price after dividends are paid out
 indx = yf.Ticker(mrkt) 
 letf = yf.Ticker(levETF)
 tbill = yf.Ticker(hedge)
-data = indx.history(period= 'max') # Index data to track
-data_tr = letf.history(period= 'max')
-data_tbill = tbill.history(period= 'max')
+data = indx.history(period= 'max', end = yesterday) # Index data to track
+data_tr = letf.history(period= 'max', end = yesterday)
+data_tbill = tbill.history(period= 'max', end = yesterday)
+# Ending on yesterday allows for consistent data when running during trading hours. It also eliminates issues with dataframe sizes not matching 
 # for custom date range
-# data = indx.history(start = "2005-07-01", end = "2020-12-31")
-# data_tr = letf.history(start = "2007-07-01", end = "2020-12-31")
-# data_tbill = tbill.history(start = "2007-07-01", end = "2020-12-31")
+# data = indx.history(start = "2014-09-17", end = "2024-12-31")
+# data_tr = letf.history(start = "2017-01-01", end = "2024-12-31")
+# data_tbill = tbill.history(start = "2017-01-01", end = "2024-12-31")
 
 #calcualte MA before aligning start dates to have MA at starting data
 close_prices = data[['Close']]
 data['MA'] = close_prices['Close'].rolling(window=moving_avg).mean()
 
 # setting all dataframes to have same start date
+data.index = data.index.date
+data_tr.index = data_tr.index.date
+data_tbill.index = data_tbill.index.date
+# eliminate time component of datetime index for indexing cryptocurrencies which trade 24/7
+# this allows for indexing in the buy/sell section
 dfs = [data, data_tr, data_tbill]
 start_dates = [df.index[0] for df in dfs]
 latest_start_date = max(start_dates)
 finish_date = data.index[-1]
 aligned_dfs = [df[df.index >= latest_start_date] for df in dfs]
-data = aligned_dfs[0]
-data_tr = aligned_dfs[1]
-data_tbill = aligned_dfs[2]
+data = aligned_dfs[0].copy()
+data_tr = aligned_dfs[1].copy()
+data_tbill = aligned_dfs[2].copy()
 
 # Buy/Sell when price is above/below the moving average
-data_tr['Buy'] = (data['Close'] > data['MA'])
-data_tr['Sell'] = (data['Close'] < data['MA'])
+data_tr.loc[:,'Buy'] = data['Close'] > data['MA']
+data_tr.loc[:,'Sell'] = data['Close'] < data['MA']
 
 # Backtest
 position = 0  # ETF Shares
@@ -52,7 +60,7 @@ buydates = []
 selldates = []
 trades = 0
 holding_tbill = False
-in_tbill_date =  0 if cash_only == 1 else 1
+in_tbill_date =  0 if cash_only else 1
 
 if cash_only:
     for index, row in data_tr.iterrows():
@@ -63,7 +71,6 @@ if cash_only:
             capital = 0
             buydates.append(index)
             trades = trades + 1
-
         # Sell
         elif row['Sell'] and position > 0:
             sell_price = row['Close']
@@ -73,7 +80,6 @@ if cash_only:
             returns.append((sell_price - buy_price) / buy_price)
             selldates.append(index)
             trades = trades + 1
-
         if position > 0:
             capital_history.append(position * row['Close'])  # Track unrealized capital (still holding)
         else:
@@ -114,22 +120,29 @@ else:
         else: #cash
             capital_history.append(capital)  # Track realized capital (not holding)
 
-print(capital_history)
-data['Capital'] = capital_history
+# print(capital_history)
+# data['Capital'] = capital_history
 # Calculate the performance
 if position > 0:
-    sell_price = data_tr['Close'].iloc[-1] #iloc [-1] gives last value in <CLOSE>. ILOC + Integer location based indexing
+    sell_price = data_tr['Close'].iloc[-1] #iloc [-1] gives last value in <CLOSE>. ILOC = Integer location based indexing
     capital = position * sell_price #Liquidate assets to see final gains
+    print(f"\nFinal capital : {capital:.2f}")
+elif tb_position > 0:
+    sell_price = data_tbill['Close'].iloc[-1] #iloc [-1] gives last value in <CLOSE>. ILOC = Integer location based indexing
+    capital = tb_position * sell_price #Liquidate assets to see final gains
     print(f"\n Final capital : {capital:.2f}")
+else:
+    print("ended elsewhere...")
+
 gains = (capital - 10000)/10000
-print(f"\n Total Return: {gains * 100:.2f}%")
+print(f"\nTotal Return: {gains * 100:.2f}%")
 
 print(f'Start date : ', latest_start_date)
 print(f'End date : ', finish_date)
 num_years = (finish_date - latest_start_date).days / 365.25  # Use 365.25 for leap years
 print(f"\n Number of years in the dataset: {num_years:.2f}")
 if capital == 0:
-    print("All capital lost - Way to go...")
+    print("All capital lost...")
     capital += 1
 cagr = ((math.e**(math.log(capital/10000)/num_years))-1)*100
 print(f" CAGR : {cagr :.2f}%")
@@ -153,7 +166,10 @@ print()
 # df = pd.DataFrame(data)
 # df.to_csv('50DMA_trades.csv', sep =',', index=False)
 
-if 1:
+# print("index type: ")
+# print(type(data.index[0]))
+
+if 0:
     # new
     fig, ax1 = plt.subplots(figsize=(10, 5))
     fig, ax3 = plt.subplots(figsize=(10, 5))
@@ -178,9 +194,10 @@ if 1:
     ax2.plot(data.index, capital_history, label='Capital', color='purple', linestyle='--', alpha=0.7)
     ax2.set_ylabel('Capital')
     ax2.legend(loc='upper right')
+    # ax2.set_ylim(0, 50000)
 
     # Create a second graph (ax3) for hedge history
-    ax3.plot(data.index, data_tbill['Close'], label= hedge, color='red')
+    ax3.plot(data_tbill.index, data_tbill['Close'], label= hedge, color='red')
     ax3.set_ylabel('Price')
     ax3.set_title('Hedge Price')
     ax3.legend(loc='upper left')
