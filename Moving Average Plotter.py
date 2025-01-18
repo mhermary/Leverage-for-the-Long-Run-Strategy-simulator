@@ -4,13 +4,13 @@ import yfinance as yf
 # import datetime
 import matplotlib.dates as mdates
 
-moving_avg = 200
+moving_avg = 100
 
 ticker1 = '^GSPC' # ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
-ticker2 = '^DJT' 
+ticker2 = '^NDX' 
 # Does not work well with ETFs that regularly pay dividends like BIL, SHV, VGSH, CASH.TO
 # Something in the yfinance data import does not lower the stock price after dividends are paid out
-period = 'max'
+period = '5y'
 
 indx = yf.Ticker(ticker1) # ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
 alt = yf.Ticker(ticker2) # ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
@@ -27,7 +27,7 @@ alt_data['MA'] = alt_data['Close'].rolling(window=moving_avg).mean()
 fig, ax1 = plt.subplots(figsize=(10, 5))
 # fig, ax2 = plt.subplots(figsize=(10, 5))
 plot_MA = str(ticker1) + " " + str(moving_avg) + " day MA"
-alt_plot_MA = str(ticker1) + " " + str(moving_avg) + " day MA"
+alt_plot_MA = str(ticker2) + " " + str(moving_avg) + " day MA"
 ax1.plot(data.index, data['Close'], label=ticker1, color='blue')
 ax1.plot(data.index, data['MA'], label=plot_MA, color='orange')
 # ax2.plot(alt_data.index, alt_data['Close'], label= 'Alt Close Price', color='red')
