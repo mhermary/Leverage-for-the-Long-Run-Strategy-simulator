@@ -4,13 +4,13 @@ import yfinance as yf
 # import datetime
 import matplotlib.dates as mdates
 
-moving_avg = 100
+moving_avg = 200
 
 ticker1 = '^GSPC' # ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
-ticker2 = '^NDX' 
+ticker2 = '^DJT' 
 # Does not work well with ETFs that regularly pay dividends like BIL, SHV, VGSH, CASH.TO
 # Something in the yfinance data import does not lower the stock price after dividends are paid out
-period = '5y'
+period = 'max'
 
 indx = yf.Ticker(ticker1) # ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
 alt = yf.Ticker(ticker2) # ^GSPC = S&P500, ^NDX = NASDAQ, ^DJI = Dow Jones
@@ -22,10 +22,12 @@ alt_data = alt.history(period = period) # Index data to track
 # tbill_data = web.DataReader('TB3MS', 'fred', start, end)  # 3-month T-Bill data
 # tbill_prices = tbill_data
 data['MA'] = data['Close'].rolling(window=moving_avg).mean()
+alt_data['MA'] = alt_data['Close'].rolling(window=moving_avg).mean()
 
 fig, ax1 = plt.subplots(figsize=(10, 5))
 # fig, ax2 = plt.subplots(figsize=(10, 5))
-plot_MA = str(moving_avg) + " day MA"
+plot_MA = str(ticker1) + " " + str(moving_avg) + " day MA"
+alt_plot_MA = str(ticker1) + " " + str(moving_avg) + " day MA"
 ax1.plot(data.index, data['Close'], label=ticker1, color='blue')
 ax1.plot(data.index, data['MA'], label=plot_MA, color='orange')
 # ax2.plot(alt_data.index, alt_data['Close'], label= 'Alt Close Price', color='red')
@@ -39,6 +41,7 @@ plt.xticks(rotation=-45)  # Rotate date labels for better readability
 ax2 = ax1.twinx()
 # ax2.plot(data.index, capital_history, label='Capital', color='purple', linestyle='--', alpha=0.7)
 ax2.plot(alt_data.index, alt_data['Close'], label= ticker2, color='red')
+ax2.plot(alt_data.index, alt_data['MA'], label=plot_MA, color='green')
 # ax2.plot(tbill_data.index, tbill_prices, label= ticker2, color='red')
 ax2.set_ylabel(ticker2)
 ax2.legend(loc='upper right')
